@@ -1,2 +1,2 @@
-# CBNet
-Addressing Long-Tailed Challenges in Trajectory Prediction via Complexity-Based Branching
+# LTPR
+LTPR: Addressing Long-Tailed Challenges in Trajectory Prediction via a Novel Proposal-Refine Framework
