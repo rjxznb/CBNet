@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_batch_size', type=int, required=True)
     parser.add_argument('--shuffle', type=bool, default=True)
     parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--pin_memory', type=bool, default=False)
+    parser.add_argument('--pin_memory', type=bool, default=True)
     parser.add_argument('--persistent_workers', type=bool, default=True)
     parser.add_argument('--train_raw_dir', type=str, default=None)
     parser.add_argument('--val_raw_dir', type=str, default=None)
@@ -42,25 +42,20 @@ if __name__ == '__main__':
     parser.add_argument('--test_processed_dir', type=str, default=None)
     parser.add_argument('--accelerator', type=str, default='gpu')
     parser.add_argument('--devices', type=int, default=8)
-    parser.add_argument('--max_epochs', type=int, default=100)
+    parser.add_argument('--max_epochs', type=int, default=64)
     QCNet.add_model_specific_args(parser) # 加上在qcnet文件中定义的参数，python中的对象全是引用，也就是在同一地址，不用再次赋值CLI对象；
     args = parser.parse_args() # 将CLI参数对象转换为字典的形式；
 
 
 
     model = QCNet(**vars(args))
-    model1 =  QCNet.load_from_checkpoint('./epoch=63-step=399872.ckpt', map_location='cpu', strict=False)
-    model.encoder = model1.encoder
-    # model1 = QCNet.load_from_checkpoint('/space/renjx/checkpoints/qcnet_region_ensemble/epoch=62-step=449820.ckpt', map_location='cpu')
-    # model.encoder = model1.encoder
-    # model.decoder = model1.decoder
     datamodule = {
         'argoverse_v2': ArgoverseV2DataModule,
     }[args.dataset](**vars(args))
-    model_checkpoint = ModelCheckpoint(dirpath="/space/renjx/checkpoints/qcnet_region_ensemble", monitor='val_minFDE', save_top_k=5, mode='min')
+    model_checkpoint = ModelCheckpoint(monitor='val_minFDE', save_top_k=5, mode='min')
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
-    trainer = pl.Trainer(accumulate_grad_batches=2, accelerator=args.accelerator, devices=args.devices,
-                         strategy=DDPStrategy(find_unused_parameters=True, gradient_as_bucket_view=True, timeout=datetime.timedelta(days=2)),
+    trainer = pl.Trainer(accelerator=args.accelerator, devices=args.devices,
+                         strategy=DDPStrategy(find_unused_parameters=True, gradient_as_bucket_view=True),
                          callbacks=[model_checkpoint, lr_monitor], max_epochs=args.max_epochs)
     trainer.fit(model, datamodule)
 
